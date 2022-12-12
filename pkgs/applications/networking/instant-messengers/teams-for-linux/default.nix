@@ -9,6 +9,7 @@
 , nodejs
 , fetchYarnDeps
 , electron
+, libpulseaudio
 }:
 
 stdenv.mkDerivation rec {
@@ -66,6 +67,7 @@ stdenv.mkDerivation rec {
     popd
 
     makeWrapper '${electron}/bin/electron' "$out/bin/teams-for-linux" \
+      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ libpulseaudio ]} \
       --add-flags "$out/share/teams-for-linux/app.asar" \
       --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
 
