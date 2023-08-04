@@ -13,7 +13,6 @@
 , libxml2
 , xar
 , wasi-libc
-, avrgcc
 , binaryen
 , avrdude
 , gdb
@@ -22,23 +21,22 @@
 }:
 
 let
-  llvmMajor = lib.versions.major llvm.version;
   inherit (llvmPackages) llvm clang compiler-rt lld;
 in
 
 buildGoModule rec {
   pname = "tinygo";
-  version = "0.26.0";
+  version = "0.28.1";
 
   src = fetchFromGitHub {
     owner = "tinygo-org";
     repo = "tinygo";
     rev = "v${version}";
-    sha256 = "rI8CADPWKdNvfknEsrpp2pCeZobf9fAp0GDIWjupzZA=";
+    sha256 = "kmmlLxXdkaIrUVV1Ty/5nrhCJOffhaM03YTlvily+mA=";
     fetchSubmodules = true;
   };
 
-  vendorSha256 = "sha256-ihQd/RAjAQhgQZHbNiWmAD0eOo1MvqAR/OwIOUWtdAM=";
+  vendorSha256 = "sha256-J58H0xwAmdUfbFDjaUqfqG3N/ATxtx8nEknatNu1s54=";
 
   patches = [
     ./0001-Makefile.patch
@@ -52,7 +50,7 @@ buildGoModule rec {
     ./0003-Use-out-path-as-build-id-on-darwin.patch
   ];
 
-  nativeCheckInputs = [ avrgcc binaryen ];
+  nativeCheckInputs = [ binaryen clang.cc lld gdb ];
   nativeBuildInputs = [ makeWrapper ];
   buildInputs = [ llvm clang.cc ]
     ++ lib.optionals stdenv.isDarwin [ zlib ncurses libffi libxml2 xar ];
@@ -61,7 +59,7 @@ buildGoModule rec {
   inherit tinygoTests;
 
   allowGoReference = true;
-  tags = [ "llvm${llvmMajor}" ];
+  tags = [ "llvm${lib.versions.major llvm.version}" ];
   ldflags = [ "-X github.com/tinygo-org/tinygo/goenv.TINYGOROOT=${placeholder "out"}/share/tinygo" ];
   subPackages = [ "." ];
 
@@ -93,27 +91,23 @@ buildGoModule rec {
       --replace "build/release/tinygo/bin" "$out/bin" \
       --replace "build/release/" "$out/share/"
 
+    # Darwin patch
     substituteInPlace builder/buildid.go \
       --replace "OUT_PATH" "$out"
+
+    substituteInPlace compileopts/target.go \
+      --replace "gdb-multiarch" "gdb"
 
     # TODO: Fix mingw and darwin
     # Disable windows and darwin cross-compile tests
     sed -i "/GOOS=windows/d" Makefile
     sed -i "/GOOS=darwin/d" Makefile
-
-    # tinygo needs versioned binaries
-    mkdir -p $out/libexec/tinygo
-    ln -s ${lib.getBin clang.cc}/bin/clang $out/libexec/tinygo/clang-${llvmMajor}
-    ln -s ${lib.getBin lld}/bin/ld.lld $out/libexec/tinygo/ld.lld-${llvmMajor}
-    ln -s ${lib.getBin lld}/bin/wasm-ld $out/libexec/tinygo/wasm-ld-${llvmMajor}
-    ln -s ${gdb}/bin/gdb $out/libexec/tinygo/gdb-multiarch
   '' + lib.optionalString (stdenv.buildPlatform != stdenv.hostPlatform) ''
     substituteInPlace Makefile \
       --replace "./build/tinygo" "${buildPackages.tinygo}/bin/tinygo"
   '';
 
   preBuild = ''
-    export PATH=$out/libexec/tinygo:$PATH
     export HOME=$TMPDIR
   '';
 
@@ -140,7 +134,7 @@ buildGoModule rec {
   '';
 
   checkPhase = lib.optionalString (tinygoTests != [ ] && tinygoTests != null) ''
-    make ''${tinygoTests[@]} XTENSA=0 ${lib.optionalString stdenv.isDarwin "AVR=0"}
+    make ''${tinygoTests[@]} XTENSA=0
   '';
 
   installPhase = ''
@@ -149,7 +143,7 @@ buildGoModule rec {
     make build/release
 
     wrapProgram $out/bin/tinygo \
-      --prefix PATH : ${lib.makeBinPath [ go avrdude openocd avrgcc binaryen ]}:$out/libexec/tinygo
+      --prefix PATH : ${lib.makeBinPath [ clang.cc lld go gdb avrdude openocd binaryen ]}
 
     runHook postInstall
   '';
