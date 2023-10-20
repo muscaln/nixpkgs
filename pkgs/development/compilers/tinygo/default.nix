@@ -25,6 +25,24 @@ let
   llvmMajor = lib.versions.major llvm.version;
   inherit (llvmPackages) llvm clang compiler-rt lld;
 
+  version = "0.30.0";
+
+  src = fetchFromGitHub {
+    owner = "tinygo-org";
+    repo = "tinygo";
+    rev = "v${version}";
+    sha256 = "sha256-hOccfMKuvTKYKDRcEgTJ8k/c/H+qNDpvotWIqk6p2u8=";
+    fetchSubmodules = true;
+  };
+
+  wasilibc = wasi-libc.overrideAttrs (old: {
+    src = src + "/lib/wasi-libc";
+    NIX_CFLAGS_COMPILE = "-mnontrapping-fptoint -msign-ext";
+    postPatch = ''
+      sed -i "/diff -wur/d" Makefile
+    '' + old.postPatch;
+  });
+
   # only doing this because only on darwin placing clang.cc in nativeBuildInputs
   # doesn't build
   bootstrapTools = runCommand "tinygo-bootstap-tools" { } ''
@@ -39,15 +57,7 @@ in
 
 buildGoModule rec {
   pname = "tinygo";
-  version = "0.30.0";
-
-  src = fetchFromGitHub {
-    owner = "tinygo-org";
-    repo = "tinygo";
-    rev = "v${version}";
-    sha256 = "sha256-hOccfMKuvTKYKDRcEgTJ8k/c/H+qNDpvotWIqk6p2u8=";
-    fetchSubmodules = true;
-  };
+  inherit version src;
 
   vendorHash = "sha256-2q3N6QhfRmwbs4CTWrFWr1wyhf2jPS2ECAn/wrrpXdM=";
 
@@ -100,8 +110,8 @@ buildGoModule rec {
     # Copy wasi-libc, symlink seems not working
     rm -rf lib/wasi-libc/*
     mkdir -p lib/wasi-libc/sysroot/lib/wasm32-wasi lib/wasi-libc/sysroot/include
-    cp -a ${wasi-libc}/lib/* lib/wasi-libc/sysroot/lib/wasm32-wasi/
-    cp -a ${wasi-libc.dev}/include/* lib/wasi-libc/sysroot/include/
+    cp -a ${wasilibc}/lib/* lib/wasi-libc/sysroot/lib/wasm32-wasi
+    cp -a ${wasilibc.dev}/include/* lib/wasi-libc/sysroot/include
 
     # Borrow compiler-rt builtins from our source
     # See https://github.com/tinygo-org/tinygo/pull/2471
@@ -155,7 +165,7 @@ buildGoModule rec {
     runHook postInstall
   '';
 
-  disallowedReferences = [ wasi-libc ];
+  disallowedReferences = [ wasilibc ];
 
   meta = with lib; {
     homepage = "https://tinygo.org/";
