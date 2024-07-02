@@ -3,22 +3,22 @@
 , fetchFromGitHub
 , pkg-config
 , libxml2
-, systemd
+, libusb1
 }:
 
 stdenv.mkDerivation {
   pname   = "qdl";
-  version = "unstable-2023-04-11";
+  version = "unstable-2024-06-10";
 
   src = fetchFromGitHub {
     owner = "linux-msm";
     repo = "qdl";
-    rev = "3b22df2bc7de02d867334af3a7aa8606db4f8cdd";
-    sha256 = "sha256-2sL9HX73APTn9nQOx1Efdkz9F4bNASPMVFMx6YOqxyc=";
+    rev = "cbd46184d33af597664e08aff2b9181ae2f87aa6";
+    sha256 = "sha256-0PeOunYXY0nEEfGFGdguf5+GNN950GhPfMaD8h1ez/8=";
   };
 
   nativeBuildInputs = [ pkg-config ];
-  buildInputs = [ systemd libxml2 ];
+  buildInputs = [ libxml2 libusb1 ];
 
   installPhase = ''
     runHook preInstall
