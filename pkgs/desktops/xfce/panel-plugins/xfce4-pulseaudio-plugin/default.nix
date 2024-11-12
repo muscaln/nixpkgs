@@ -7,6 +7,7 @@
 , libnotify
 , libxfce4ui
 , libxfce4util
+, libxfce4windowing
 , xfce4-panel
 , xfconf
 , keybinder3
@@ -16,12 +17,9 @@
 mkXfceDerivation {
   category = "panel-plugins";
   pname = "xfce4-pulseaudio-plugin";
-  version = "0.4.8";
-  sha256 = "sha256-7vcjARm0O+/hVNFzOpxcgAnqD+wRNg5/eqXLcq4t/iU=";
-
-  postPatch = ''
-    substituteInPlace configure.ac.in --replace gio-2.0 gio-unix-2.0
-  '';
+  version = "0.4.8-unstable-2024-11-12";
+  rev = "97c072d86ea0ed2e6f831657f1617ef27d073e6e";
+  sha256 = "sha256-EhsuwGTfqTGeQoW8eRLbzyn96ESDFXceYX5wQUTOt5Q=";
 
   buildInputs = [
     exo
@@ -33,6 +31,7 @@ mkXfceDerivation {
     libpulseaudio
     libxfce4ui
     libxfce4util
+    libxfce4windowing
     xfce4-panel
     xfconf
   ];
